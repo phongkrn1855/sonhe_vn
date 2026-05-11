@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { translations } from '../translations';
 import { 
@@ -21,28 +21,28 @@ export default function Timekeeping() {
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [year, setYear] = useState(new Date().getFullYear());
 
-    useEffect(() => {
-        fetchGroups();
-    }, []);
-
-    useEffect(() => {
-        if (selectedGroup) fetchSummary();
-    }, [selectedGroup, month, year]);
-
-    const fetchGroups = async () => {
+    const fetchGroups = useCallback(async () => {
         try {
             const res = await axios.get('http://localhost:5001/api/groups');
             setGroups(res.data.groups);
             if (res.data.groups.length > 0) setSelectedGroup(res.data.groups[0].id);
         } catch (err) { console.error(err); }
-    };
+    }, []);
 
-    const fetchSummary = async () => {
+    const fetchSummary = useCallback(async () => {
         try {
             const res = await axios.get(`http://localhost:5001/api/attendance/${selectedGroup}/summary?month=${month}&year=${year}`);
             setSummary(res.data.summary);
         } catch (err) { console.error(err); }
-    };
+    }, [selectedGroup, month, year]);
+
+    useEffect(() => {
+        fetchGroups();
+    }, [fetchGroups]);
+
+    useEffect(() => {
+        if (selectedGroup) fetchSummary();
+    }, [selectedGroup, fetchSummary]);
 
     const changeMonth = (delta) => {
         let newMonth = month + delta;

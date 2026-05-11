@@ -1,23 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { translations } from '../translations';
 import { 
   Plus, 
   Search, 
-  Filter, 
   Clock, 
   CheckCircle2, 
   AlertCircle,
   Calendar as CalendarIcon,
   User as UserIcon,
-  MoreVertical,
   Trash2
 } from 'lucide-react';
 import axios from 'axios';
 
 export default function Tasks() {
     const { language } = useSettingsStore();
-    const t = translations[language];
     const [tasks, setTasks] = useState([]);
     const [groups, setGroups] = useState([]);
     const [selectedGroup, setSelectedGroup] = useState(null);
@@ -25,38 +22,40 @@ export default function Tasks() {
     const [newTask, setNewTask] = useState({ title: '', description: '', assigned_to: '', due_date: '' });
     const [members, setMembers] = useState([]);
 
+    const fetchGroups = useCallback(async () => {
+        try {
+            const res = await axios.get('http://localhost:5001/api/groups');
+            setGroups(res.data.groups);
+            if (res.data.groups.length > 0) setSelectedGroup(res.data.groups[0].id);
+        } catch (err) { console.error(err); }
+    }, []);
+
+    const fetchTasks = useCallback(async () => {
+        if (!selectedGroup) return;
+        try {
+            const res = await axios.get(`http://localhost:5001/api/tasks/group/${selectedGroup}`);
+            setTasks(res.data.tasks);
+        } catch (err) { console.error(err); }
+    }, [selectedGroup]);
+
+    const fetchMembers = useCallback(async () => {
+        if (!selectedGroup) return;
+        try {
+            const res = await axios.get(`http://localhost:5001/api/groups/${selectedGroup}/members`);
+            setMembers(res.data.members);
+        } catch (err) { console.error(err); }
+    }, [selectedGroup]);
+
     useEffect(() => {
         fetchGroups();
-    }, []);
+    }, [fetchGroups]);
 
     useEffect(() => {
         if (selectedGroup) {
             fetchTasks();
             fetchMembers();
         }
-    }, [selectedGroup]);
-
-    const fetchGroups = async () => {
-        try {
-            const res = await axios.get('http://localhost:5001/api/groups');
-            setGroups(res.data.groups);
-            if (res.data.groups.length > 0) setSelectedGroup(res.data.groups[0].id);
-        } catch (err) { console.error(err); }
-    };
-
-    const fetchTasks = async () => {
-        try {
-            const res = await axios.get(`http://localhost:5001/api/tasks/group/${selectedGroup}`);
-            setTasks(res.data.tasks);
-        } catch (err) { console.error(err); }
-    };
-
-    const fetchMembers = async () => {
-        try {
-            const res = await axios.get(`http://localhost:5001/api/groups/${selectedGroup}/members`);
-            setMembers(res.data.members);
-        } catch (err) { console.error(err); }
-    };
+    }, [selectedGroup, fetchTasks, fetchMembers]);
 
     const handleCreateTask = async (e) => {
         e.preventDefault();
